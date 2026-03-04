@@ -1,9 +1,17 @@
 // src/router/layouts/AdminLayout.tsx
 import { Outlet, useNavigate } from "react-router-dom";
 import AdminNav from "../../pages/admin/AdminNav";
+import { useAuthStore } from "../../store/auth.store";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const logout = useAuthStore((s) => s.logout);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -13,9 +21,11 @@ export default function AdminLayout() {
           티키타카 <sub className="text-[11px] font-normal text-white/50">Admin</sub>
         </span>
         <div className="flex items-center gap-4">
-          <span className="text-white/60 text-[12.5px]">admin@tikitaka.kr</span>
+          <span className="text-white/60 text-[12.5px]">
+            {currentUser?.email ?? "admin@tikitaka.kr"}
+          </span>
           <button
-            onClick={() => navigate("/login")}
+            onClick={handleLogout}
             className="text-white/60 text-[12.5px] hover:text-white transition"
           >
             로그아웃
