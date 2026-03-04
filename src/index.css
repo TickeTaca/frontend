@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* 기본 리셋 (대규모 서비스용 최소 설정) */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
