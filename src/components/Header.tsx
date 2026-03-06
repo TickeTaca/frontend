@@ -1,21 +1,29 @@
 // src/components/Header.tsx
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth.store";
+import { useWaitingStore } from "../store/waiting.store";
 
 export default function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isInQueue, leaveQueue } = useWaitingStore();
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = () => {
+    if (isInQueue) {
+      logout();
+      return;
+    }
     logout();
-    navigate("/");
   };
 
   return (
     <header className="w-full">
       <nav className="h-[50px] bg-[#1a6ad4] flex items-center px-6">
-        <Link to="/" className="text-white font-bold text-[20px] tracking-[-0.5px] mr-8">
+        <Link to="/"
+          onClick={() => { if (isInQueue) leaveQueue(); }}
+          className="text-white font-bold text-[20px] tracking-[-0.5px] mr-8">
           티키타카 <sub className="text-[10px] text-white/60 ml-1">TIKITAKA</sub>
         </Link>
 
@@ -23,12 +31,12 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           {!currentUser ? (
-            <Link
-              to="/login"
+            <button
+              onClick={() => navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`, { replace: true })}
               className="text-[13px] px-4 py-1.5 rounded bg-white text-[#1a6ad4] font-bold"
             >
               로그인
-            </Link>
+            </button>
           ) : (
             <>
               <span className="text-white/90 text-[13px]">{currentUser.name} 님</span>
