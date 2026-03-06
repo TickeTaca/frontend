@@ -1,5 +1,7 @@
 // src/pages/waiting/WaitingPage.tsx
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useWaitingStore } from "../../store/waiting.store";
 
 // ── 더미 대기 상태
 const DUMMY_WAITING = {
@@ -16,6 +18,7 @@ const STEPS = ["대기열 입장", "대기 중", "좌석 선택", "결제"] as c
 
 export default function WaitingPage() {
   const navigate = useNavigate();
+  const { isInQueue, eventId: queueEventId, leaveQueue } = useWaitingStore();
 
   const { position, totalWaiting, estimatedMin, estimatedSec, remainingSeats } =
     DUMMY_WAITING;
@@ -26,9 +29,23 @@ export default function WaitingPage() {
     Math.round(((totalWaiting - position) / totalWaiting) * 100)
   );
 
+  useEffect(() => {
+    if (!isInQueue) {
+      navigate(queueEventId ? `/event/${queueEventId}` : "/", { replace: true });
+      return;
+    }
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const handleCancel = () => {
     if (window.confirm("대기열에서 이탈하시겠습니까? 현재 순번을 잃게 됩니다.")) {
-      navigate(-1);
+      leaveQueue();
+      navigate(`/event/${queueEventId}`);
     }
   };
 
@@ -139,6 +156,16 @@ export default function WaitingPage() {
           순번 도달 시 자동으로 좌석 선택 페이지로 이동합니다.
           입장 토큰 유효시간: <strong>10분</strong>
         </div>
+
+        <button
+          onClick={() => {
+            leaveQueue();
+            navigate(`/event/${queueEventId}`);
+          }}
+          className="w-full py-2.5 border border-gray-300 text-gray-500 rounded hover:bg-gray-50 text-[13.5px] transition mb-2"
+        >
+          ← 이벤트 상세로 돌아가기
+        </button>
 
         {/* 대기 취소 버튼 */}
         <button

@@ -1,6 +1,8 @@
 // src/pages/event/EventDetailPage.tsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../store/auth.store";
+import { useWaitingStore } from "../../store/waiting.store";
 
 // ── 더미 데이터 (HomePage와 동일한 구조)
 type EventStatus = "open" | "soon" | "closing" | "available";
@@ -227,9 +229,11 @@ const TAB_LABELS: { key: TabKey; label: string }[] = [
 
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const { enterQueue } = useWaitingStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>("info");
 
+  const currentUser = useAuthStore((s) => s.currentUser);
   const event = DUMMY_EVENTS.find((e) => e.id === Number(eventId));
   const countdown = useCountdown(event?.bookingOpenAt ?? new Date());
 
@@ -287,7 +291,15 @@ export default function EventDetailPage() {
                 <div className="flex gap-2">
                   <button
                     disabled={!isOpen}
-                    onClick={() => navigate("/waiting")}
+                    onClick={() => {
+                      if (!currentUser) {
+                        enterQueue(String(event.id));
+                        navigate(`/login?redirect=/waiting&eventId=${eventId}`);
+                        return;
+                      }
+                      enterQueue(String(event.id));
+                      navigate("/waiting", {state: { eventId: String(event.id)} });
+                    }}
                     className={`flex-1 py-2.5 rounded font-bold text-[15px] transition ${
                       isOpen
                         ? "bg-[#1a6ad4] text-white hover:bg-[#1458b0]"
@@ -412,7 +424,15 @@ export default function EventDetailPage() {
                   </div>
 
                   <button
-                    onClick={() => navigate("/waiting")}
+                    onClick={() => {
+                      if (!currentUser) {
+                        enterQueue(String(event.id));
+                        navigate(`/login?redirect=/waiting&eventId=${eventId}`);
+                        return;
+                      }
+                      enterQueue(String(event.id));
+                      navigate("/waiting", { state: { eventId: String(event.id)} });
+                    }}
                     className="w-full py-[14px] bg-[#1a6ad4] text-white rounded font-bold text-[16px] hover:bg-[#1458b0]"
                   >
                     예매하기 →

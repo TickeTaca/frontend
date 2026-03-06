@@ -1,13 +1,18 @@
 // src/pages/login/LoginPage.tsx
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../store/auth.store";
+import { useWaitingStore } from "../../store/waiting.store";
 
 type TabType = "login" | "signup";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { enterQueue, isInQueue, leaveQueue } = useWaitingStore();
   const { login, signup } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  const eventId = searchParams.get("eventId");
 
   const [activeTab, setActiveTab] = useState<TabType>("login");
 
@@ -38,7 +43,13 @@ export default function LoginPage() {
       setLoginError(result.message);
       return;
     }
-    navigate(result.role === "admin" ? "/admin" : "/");
+    if(redirect === "/waiting" && eventId && isInQueue){
+      enterQueue(eventId);
+    }
+    navigate(
+      result.role === "admin" ? "/admin" : (redirect ?? "/"),
+      { state: eventId ? { eventId } : undefined, replace: true }
+    );
   };
 
   const handleSignup = () => {
@@ -66,7 +77,7 @@ export default function LoginPage() {
           {/* 좌측 패널 */}
           <div className="w-1/2 bg-[#2f6fcd] text-white p-[56px] flex flex-col justify-between">
             <div>
-              <Link to="/" className="flex items-end gap-2 mb-10 hover:opacity-90 transition">
+              <Link to="/" onClick={leaveQueue} className="flex items-end gap-2 mb-10 hover:opacity-90 transition">
                 <span className="text-[28px] font-extrabold tracking-tight">티키타카</span>
                 <span className="text-[13px] text-white/70 mb-[3px]">TIKITAKA</span>
               </Link>

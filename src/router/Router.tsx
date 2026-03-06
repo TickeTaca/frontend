@@ -5,7 +5,7 @@ import HomeLayout from "./layouts/HomeLayout";
 import BaseLayout from "./layouts/BaseLayout";
 import BreadcrumbLayout from "./layouts/BreadcrumbLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import { AuthGuard, AdminGuard, GuestGuard } from "./Guards";
+import { AuthGuard, AdminGuard } from "./Guards";
 
 import HomePage from "../pages/home/HomePage";
 import LoginPage from "../pages/login/LoginPage";
@@ -36,10 +36,8 @@ export default function Router() {
       <ScrollToTop />
       <Routes>
 
-        {/* 로그인 — 이미 로그인 시 홈으로 */}
-        <Route element={<GuestGuard />}>
-          <Route path="/login" element={<LoginPage />} />
-        </Route>
+        {/* 로그인 */}
+        <Route path="/login" element={<LoginPage />} />
 
         {/* 홈 — 누구나 */}
         <Route element={<HomeLayout />}>
