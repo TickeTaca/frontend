@@ -1,6 +1,7 @@
 // src/pages/seat/SeatSelectPage.tsx
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useBookingStore } from "../../store/booking.store";
 
 // ── 타입
 type SeatStatus = "available" | "held" | "my-hold" | "reserved";
@@ -52,7 +53,6 @@ function generateSeats(sectionId: string): Seat[] {
 }
 
 // ── 상수
-const HOLD_SECONDS = 5 * 60; // 5분
 const FEE_RATE = 0.02;
 const ROW_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -70,27 +70,16 @@ export default function SeatSelectPage() {
   const [seats, setSeats] = useState<Seat[]>(() => generateSeats(SECTIONS[0].id));
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isExpired, setIsExpired] = useState(false);
-  const [remainSec, setRemainSec] = useState(HOLD_SECONDS);
-  const [timerActive, setTimerActive] = useState(false);
+  const { lockSeats } = useBookingStore();
 
-  // ── 타이머
   useEffect(() => {
-    if (!timerActive) return;
-    if (remainSec <= 0) {
-      setIsExpired(true);
-      setSelectedSeats([]);
-      setSeats((prev) =>
-        prev.map((s) => s.status === "my-hold" ? { ...s, status: "available" } : s)
-      );
-      return;
-    }
-    const t = setTimeout(() => setRemainSec((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [timerActive, remainSec]);
-
-  const timerLabel = `${String(Math.floor(remainSec / 60)).padStart(2, "0")}:${String(remainSec % 60).padStart(2, "0")}`;
-  const isWarning = timerActive && remainSec <= 60 && remainSec > 0;
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // ── 구역 전환
   const handleSectionChange = (sec: Section) => {
@@ -103,7 +92,6 @@ export default function SeatSelectPage() {
 
   // ── 좌석 클릭
   const handleSeatClick = useCallback((seat: Seat) => {
-    if (isExpired) return;
     if (seat.status === "held" || seat.status === "reserved") return;
 
     setErrorMsg(null);
@@ -136,13 +124,9 @@ export default function SeatSelectPage() {
     );
     setSelectedSeats((prev) => {
       const next = [...prev, { ...seat, status: "my-hold" as SeatStatus }];
-      if (next.length === 1) {
-        setTimerActive(true);
-        setRemainSec(HOLD_SECONDS);
-      }
       return next;
     });
-  }, [isExpired, selectedSeats.length]);
+  }, [selectedSeats.length]);
 
   // ── 선택 해제 (사이드바 ✕)
   const handleRemoveSeat = (seat: Seat) => {
@@ -151,19 +135,8 @@ export default function SeatSelectPage() {
     );
     setSelectedSeats((prev) => {
       const next = prev.filter((s) => s.id !== seat.id);
-      if (next.length === 0) setTimerActive(false);
       return next;
     });
-  };
-
-  // ── 만료 후 재시도
-  const handleRetry = () => {
-    setIsExpired(false);
-    setRemainSec(HOLD_SECONDS);
-    setTimerActive(false);
-    setSeats(generateSeats(activeSection.id));
-    setSelectedSeats([]);
-    setErrorMsg(null);
   };
 
   const totalPrice = selectedSeats.length * activeSection.price;
@@ -177,42 +150,17 @@ export default function SeatSelectPage() {
         <div className="flex flex-col bg-white border-r border-gray-200">
 
           {/* 헤더바 */}
-          <div className={`px-4 py-2.5 border-b border-gray-200 flex items-center justify-between ${
-            isExpired ? "bg-red-50" : "bg-gray-50"
-          }`}>
+          <div className={"px-4 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50"}>
             <div className="flex items-center gap-3">
-              {isExpired ? (
-                <span className="text-[13.5px] font-bold text-red-600">
-                  ⏰ 점유 시간이 만료되었습니다
+              <span className="text-[13.5px] font-bold">
+                아이유 THE GOLDEN HOUR WORLD TOUR
+              </span>
+              {activeSection && (
+                <span className="text-[12.5px] text-gray-400">
+                  · {activeSection.name}
                 </span>
-              ) : (
-                <>
-                  <span className="text-[13.5px] font-bold">
-                    아이유 THE GOLDEN HOUR WORLD TOUR
-                  </span>
-                  {activeSection && (
-                    <span className="text-[12.5px] text-gray-400">
-                      · {activeSection.name}
-                    </span>
-                  )}
-                </>
               )}
             </div>
-
-            {/* 타이머 */}
-            {(timerActive || isExpired) && (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[13px] font-bold ${
-                isExpired
-                  ? "bg-red-50 border-red-300 text-red-600"
-                  : isWarning
-                  ? "bg-red-50 border-red-300 text-red-600"
-                  : "bg-orange-50 border-orange-300 text-[#f05a00]"
-              }`}>
-                ⏱ 임시 점유 &nbsp;
-                <strong>{isExpired ? "00:00" : timerLabel}</strong>
-                {isWarning && <span className="text-[11px]"> ⚠ 1분 이내</span>}
-              </div>
-            )}
           </div>
 
           {/* 에러 토스트 */}
@@ -241,27 +189,6 @@ export default function SeatSelectPage() {
 
           {/* 좌석 맵 */}
           <div className="flex-1 relative bg-[#f8f9fc] flex items-center justify-center overflow-hidden">
-
-            {/* 만료 오버레이 */}
-            {isExpired && (
-              <div className="absolute inset-0 bg-white/85 flex flex-col items-center justify-center gap-4 z-10">
-                <span className="text-[48px]">⏰</span>
-                <p className="text-[20px] font-bold text-red-600">점유 시간이 만료되었습니다</p>
-                <p className="text-[14px] text-gray-500 text-center leading-[1.7]">
-                  선택하신 좌석이 자동으로 해제되었습니다.<br />
-                  좌석 선택을 다시 진행해주세요.
-                </p>
-                <button
-                  onClick={handleRetry}
-                  className="px-8 py-3 bg-[#1a6ad4] text-white rounded font-bold text-[15px] hover:bg-[#1458b0]"
-                >
-                  좌석 다시 선택하기
-                </button>
-                <p className="text-[12px] text-gray-400">
-                  입장 토큰이 유효한 경우 좌석 선택을 이어갈 수 있습니다
-                </p>
-              </div>
-            )}
 
             {/* STAGE */}
             <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-[#cdd6e8] text-[#5b72a0] text-[12px] font-bold px-12 py-2 rounded tracking-widest">
@@ -301,7 +228,7 @@ export default function SeatSelectPage() {
 
             {/* 좌석 그리드 */}
             <div
-              className={`mt-14 flex flex-col gap-1.5 items-center ${isExpired ? "opacity-30" : ""}`}
+              className={"mt-14 flex flex-col gap-1.5 items-center"}
             >
               {Array.from({ length: ROWS }, (_, ri) => (
                 <div key={ri} className="flex items-center gap-1">
@@ -422,8 +349,15 @@ export default function SeatSelectPage() {
               </span>
             </div>
             <button
-              disabled={selectedSeats.length === 0 || isExpired}
-              onClick={() => navigate("/payment/check")}
+              disabled={selectedSeats.length === 0}
+              onClick={() => {
+                if(Math.random() < 0.2){
+                  setErrorMsg("선택하신 좌석 중 이미 다른 사용자가 점유한 좌석이 포함되어 있습니다. \n다른 좌석을 선택해주세요.");
+                  return;
+                }
+                lockSeats();
+                navigate("/payment/check", { replace: true});
+              }}
               className="w-full py-2.5 bg-[#1a6ad4] text-white rounded font-bold hover:bg-[#1458b0] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
             >
               {selectedSeats.length === 0 ? "좌석을 선택해주세요" : "결제하기"}
