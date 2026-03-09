@@ -24,7 +24,7 @@ const DUMMY_USER = {
 
 export default function MyPage() {
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabKey>(searchParams.get("tab") as TabKey) ?? "bookings";
+  const [activeTab, setActiveTab] = useState<TabKey>((searchParams.get("tab") as TabKey) ?? "bookings");
 
   const renderTab = () => {
     switch (activeTab) {
