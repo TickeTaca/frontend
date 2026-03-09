@@ -1,8 +1,11 @@
 // src/pages/payment/CheckPage.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useBookingStore } from "../../store/booking.store";
 
 type PaymentMethod = "card" | "kakao" | "naver" | "payco" | "transfer";
+
+const HOLD_SECONDS = 10 * 60;
 
 const PAYMENT_METHODS: { key: PaymentMethod; label: string }[] = [
   { key: "card",     label: "신용/체크카드" },
@@ -40,13 +43,35 @@ export default function CheckPage() {
   const [agree1, setAgree1]             = useState(false);
   const [agree2, setAgree2]             = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { seatLocked, completePayment } = useBookingStore();
+  const [remainSec, setRemainSec] = useState(HOLD_SECONDS);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!seatLocked) { navigate("/", { replace: true }); return; }
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (!seatLocked) return;
+    if (remainSec <= 0) { setIsExpired(true); return; }
+    const t = setTimeout(() => setRemainSec((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [seatLocked, remainSec]);
+
+  useEffect(() => {
+    if (isExpired) navigate("/seat", { replace: true });
+  }, [isExpired]);
 
   const seatCount = DUMMY_ORDER.seats.length;
   const seatTotal = DUMMY_ORDER.pricePerSeat * seatCount;
   const fee       = Math.round(seatTotal * 0.02);
   const total     = seatTotal + fee;
 
-  const canPay = agree1 && agree2 && !isProcessing;
+  const canPay = agree1 && agree2 && !isProcessing && !isExpired;
 
   const handleAgreeAll = (v: boolean) => { setAgreeAll(v); setAgree1(v); setAgree2(v); };
   const handleAgree1   = (v: boolean) => { setAgree1(v); setAgreeAll(v && agree2); };
@@ -57,7 +82,8 @@ export default function CheckPage() {
     setIsProcessing(true);
     // 더미: 1.5초 대기 후 분기 — 실제에서는 PG사 리다이렉트로 대체
     await new Promise((r) => setTimeout(r, 1500));
-    navigate(Math.random() < 0.2 ? "/payment/fail" : "/payment/success");
+    completePayment();
+    navigate(Math.random() < 0.2 ? "/payment/fail" : "/payment/success", { replace: true });
   };
 
   return (
@@ -89,6 +115,12 @@ export default function CheckPage() {
               </div>
             );
           })}
+        </div>
+        <div className={`flex items-center justify-between px-4 py-2.5 rounded-md mb-5 border text-[13px] font-medium ${
+          remainSec <= 60 ? "bg-red-50 border-red-300 text-red-600" : "bg-orange-50 border-orange-200 text-[#f05a00]"
+        }`}>
+          <span>⏱ 좌석 임시 점유 시간 — 시간 내 결제를 완료해주세요</span>
+          <strong>{`${String(Math.floor(remainSec / 60)).padStart(2, "0")}:${String(remainSec % 60).padStart(2, "0")}`}</strong>
         </div>
 
         <div className="grid grid-cols-[1fr_320px] gap-5">
