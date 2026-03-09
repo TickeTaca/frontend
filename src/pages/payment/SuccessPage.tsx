@@ -1,5 +1,7 @@
 // src/pages/payment/SuccessPage.tsx
 import { useNavigate } from "react-router-dom";
+import { useBookingStore } from "../../store/booking.store";
+import { useEffect } from "react";
 
 const DUMMY_SUCCESS = {
   eventTitle:  "아이유 THE GOLDEN HOUR WORLD TOUR",
@@ -15,8 +17,21 @@ const DUMMY_SUCCESS = {
 
 export default function SuccessPage() {
   const navigate = useNavigate();
+  
+  const { paymentDone, resetBooking } = useBookingStore();
 
   const total = DUMMY_SUCCESS.seatTotal + DUMMY_SUCCESS.fee;
+
+  useEffect(() => {
+    if (!paymentDone) { navigate("/", { replace: true }); return; }
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      resetBooking();
+    };
+  }, []);
 
   return (
     <div className="bg-gray-50 min-h-screen">

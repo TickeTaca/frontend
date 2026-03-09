@@ -1,5 +1,7 @@
 // src/pages/payment/FailPage.tsx
 import { useNavigate } from "react-router-dom";
+import { useBookingStore } from "../../store/booking.store";
+import { useEffect } from "react";
 
 const DUMMY_FAILED = {
   eventTitle: "아이유 THE GOLDEN HOUR WORLD TOUR",
@@ -9,6 +11,19 @@ const DUMMY_FAILED = {
 
 export default function FailPage() {
   const navigate = useNavigate();
+  
+  const { paymentDone, resetBooking } = useBookingStore();
+
+  useEffect(() => {
+    if (!paymentDone) { navigate("/", { replace: true }); return; }
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      resetBooking();
+    };
+  }, []);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -55,7 +70,7 @@ export default function FailPage() {
             홈으로
           </button>
           <button
-            onClick={() => navigate("/seat")}
+            onClick={() => {resetBooking(); navigate("/seat") }}
             className="w-full py-2.5 bg-[#1a6ad4] text-white rounded font-bold text-[13.5px] hover:bg-[#1458b0]"
           >
             좌석 다시 선택하기
