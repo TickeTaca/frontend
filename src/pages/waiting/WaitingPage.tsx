@@ -1,5 +1,5 @@
 // src/pages/waiting/WaitingPage.tsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWaitingStore } from "../../store/waiting.store";
 
@@ -7,7 +7,7 @@ import { useWaitingStore } from "../../store/waiting.store";
 const DUMMY_WAITING = {
   eventTitle: "아이유 THE GOLDEN HOUR WORLD TOUR",
   eventInfo: "2025.08.16 (토) 오후 7:00 · 잠실 올림픽주경기장",
-  position: 3247,
+  position: 250,
   totalWaiting: 14200,
   estimatedMin: 14,
   estimatedSec: 32,
@@ -19,8 +19,9 @@ const STEPS = ["대기열 입장", "대기 중", "좌석 선택", "결제"] as c
 export default function WaitingPage() {
   const navigate = useNavigate();
   const { isInQueue, eventId: queueEventId, leaveQueue } = useWaitingStore();
+  const [position, setPosition] = useState(DUMMY_WAITING.position);
 
-  const { position, totalWaiting, estimatedMin, estimatedSec, remainingSeats } =
+  const { totalWaiting, estimatedMin, estimatedSec, remainingSeats } =
     DUMMY_WAITING;
 
   const ahead = position - 1;
@@ -41,6 +42,21 @@ export default function WaitingPage() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (!isInQueue) return;
+    const timer = setInterval(() => {
+      setPosition((prev) => {
+        if (prev <= 50) {
+          clearInterval(timer);
+          navigate("/seat");
+          return 0;
+        }
+        return prev - 50;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isInQueue]);
 
   const handleCancel = () => {
     if (window.confirm("대기열에서 이탈하시겠습니까? 현재 순번을 잃게 됩니다.")) {
