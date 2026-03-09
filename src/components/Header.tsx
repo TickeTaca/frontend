@@ -2,13 +2,33 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth.store";
 import { useWaitingStore } from "../store/waiting.store";
+import { useEffect, useRef, useState } from "react";
+
+const DUMMY_NOTIFICATIONS = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  message: i % 3 === 0 ? "예매가 완료되었습니다." : i % 3 === 1 ? "공연 D-7 알림입니다." : "결제가 취소되었습니다.",
+  time: `${i + 1}시간 전`,
+  unread: i < 3,
+}));
 
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isInQueue, leaveQueue } = useWaitingStore();
   const currentUser = useAuthStore((s) => s.currentUser);
+  const [showNotifications, setShowNotifications] = useState(false);
   const logout = useAuthStore((s) => s.logout);
+
+  const notifRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+  const handleClickOutside = (e: MouseEvent) => {
+    if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+      setShowNotifications(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
 
   const handleLogout = () => {
     if (isInQueue) {
@@ -39,11 +59,41 @@ export default function Header() {
             </button>
           ) : (
             <>
-              <span className="text-white/90 text-[13px]">{currentUser.name} 님</span>
+              <Link to="/mypage" className="text-white/90 text-[13px]">{currentUser.name} 님</Link>
 
-              <Link to="/mypage" className="relative text-white text-[16px] cursor-pointer">
-                🔔
-              </Link>
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setShowNotifications((v) => !v)}
+                  className="relative text-white text-[16px] cursor-pointer"
+                >
+                  🔔
+                </button>
+                {showNotifications && (
+                  <div className="absolute right-0 top-[32px] w-[320px] bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                    <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                      <span className="text-[14px] font-bold text-gray-800">알림</span>
+                      <button onClick={() => setShowNotifications(false)} className="text-gray-400 text-[12px]">✕</button>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {DUMMY_NOTIFICATIONS.map((n) => (
+                        <div key={n.id} className={`px-4 py-3 border-b border-gray-100 last:border-0 ${n.unread ? "bg-blue-50" : ""}`}>
+                          <p className="text-[13px] text-gray-700">{n.message}</p>
+                          <p className="text-[11.5px] text-gray-400 mt-0.5">{n.time}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-4 py-2.5 border-t border-gray-200 text-center">
+                      <Link
+                        to="/mypage?tab=notifications"
+                        onClick={() => setShowNotifications(false)}
+                        className="text-[12.5px] text-[#1a6ad4]"
+                      >
+                        전체 알림 보기
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {currentUser.role === "admin" && (
                 <Link

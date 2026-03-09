@@ -4,11 +4,14 @@ import BookingListTab from "./tabs/BookingListTab";
 import NotificationTab from "./tabs/NotificationTab";
 import ProfileTab from "./tabs/ProfileTab";
 import PasswordTab from "./tabs/PasswordTab";
+import { useSearchParams } from "react-router-dom";
+import NotificationsTab from "./tabs/NotificationsTab";
 
-type TabKey = "bookings" | "notification" | "profile" | "password";
+type TabKey = "bookings" | "notifications" | "notification" | "profile" | "password";
 
 const NAV_ITEMS: { key: TabKey; label: string }[] = [
   { key: "bookings",     label: "예매 내역" },
+  { key: "notifications", label: "알림 기록" },
   { key: "notification", label: "알림 설정" },
   { key: "profile",      label: "회원 정보 수정" },
   { key: "password",     label: "비밀번호 변경" },
@@ -20,14 +23,17 @@ const DUMMY_USER = {
 };
 
 export default function MyPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("bookings");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabKey>(searchParams.get("tab") as TabKey) ?? "bookings";
 
   const renderTab = () => {
     switch (activeTab) {
       case "bookings":     return <BookingListTab />;
+      case "notifications": return <NotificationsTab />;
       case "notification": return <NotificationTab />;
       case "profile":      return <ProfileTab />;
       case "password":     return <PasswordTab />;
+      default: return <BookingListTab />;
     }
   };
 
